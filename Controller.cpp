@@ -335,37 +335,55 @@ int state = 1;
 int last_state = 1;
 bool first_pass = true;
 double x_mag = 0;
+double angle_thigh_left_z = 0;
+double angle_thigh_right_z = 0;
+double angle_knee_left = 0;
+double angle_knee_right = 0;
 
 void Controller::swing() {
   // TODO: Need a better controller to increase the speed
   // and land at the right moment
 
 	double PI_4 = 3.14 / 4.0;
+	double PI_2 = 3.14 / 2.0;
 
-	double forward_z = PI_4;
-	double backward_z = -PI_4;
+	double forward_thigh_z = PI_4;
+	double backward_thigh_z = -PI_4;
+	double forward_knee = 0;
+	double backward_knee = -PI_2;
 
 	double x_bar = 0.85; // this is in .skel file but it is private
-	double scaler = 0; // testing for now
+	double scale_thigh = 0; // testing for now
+	double scale_knee = 0;
 
 	Eigen::Vector3d comV = mSkel->getCOMLinearVelocity();
 	Eigen::Vector3d comP = mSkel->getCOM();
 	int index_thigh_left_z = mSkel->getDof("j_thigh_left_z")->getIndexInSkeleton();
 	int index_thigh_right_z = mSkel->getDof("j_thigh_right_z")->getIndexInSkeleton();
-	double angle_thigh_left_z = mSkel->getPositions()(index_thigh_left_z);
-	double angle_thigh_right_z = mSkel->getPositions()(index_thigh_right_z);
+	int index_knee_left = mSkel->getDof("j_shin_left")->getIndexInSkeleton();
+	int index_knee_right = mSkel->getDof("j_shin_right")->getIndexInSkeleton();
+	//double angle_thigh_left_z = mSkel->getPositions()(index_thigh_left_z);
+	//double angle_thigh_right_z = mSkel->getPositions()(index_thigh_right_z);
+	//double angle_knee_left = mSkel->getPositions()(index_knee_left);
+	//double angle_knee_right = mSkel->getPositions()(index_knee_right);
 
 	if (comV.x() > 0 && comV.y() > 0) {
 		if (last_state == 1 || last_state == 0) {
 			state = 0;
 			if (state != last_state) {
 				last_state = state;
+				std::cout << comV.norm() << "\n";
 				//std::cout << "idle forward\n";
 			}
 			mDesiredDofs = mDefaultPose;
+			//scale_knee = ((comP.x() - x_bar) / (2 * x_mag)) + 0.5;
 			if (!first_pass) {
-				mDesiredDofs[mSkel->getDof("j_thigh_left_z")->getIndexInSkeleton()] = forward_z;
-				mDesiredDofs[mSkel->getDof("j_thigh_right_z")->getIndexInSkeleton()] = forward_z;
+				mDesiredDofs[index_thigh_left_z] = forward_thigh_z;
+				mDesiredDofs[index_thigh_right_z] = forward_thigh_z;
+				//mDesiredDofs[index_knee_left] = angle_knee_left + (forward_knee - angle_knee_left)*scale_knee;
+				//mDesiredDofs[index_knee_right] = angle_knee_right + (forward_knee - angle_knee_right)*scale_knee;
+				mDesiredDofs[index_knee_left] = forward_knee;
+				mDesiredDofs[index_knee_right] = forward_knee;
 			}
 		}
 	}
@@ -375,13 +393,21 @@ void Controller::swing() {
 			if (state != last_state) {
 				last_state = state;
 				x_mag = abs(comP.x() - x_bar);
+				angle_thigh_left_z = mSkel->getPositions()(index_thigh_left_z);
+				angle_thigh_right_z = mSkel->getPositions()(index_thigh_right_z);
+				angle_knee_left = mSkel->getPositions()(index_knee_left);
+				angle_knee_right = mSkel->getPositions()(index_knee_right);
 				//std::cout << "forward\n";
 			}
 			mDesiredDofs = mDefaultPose;
-			scaler = 1.0 - (abs(comP.x() - x_bar) / x_mag);
+			scale_thigh = 1.0 - (abs(comP.x() - x_bar) / x_mag);
+			//scale_knee = ((comP.x() - x_bar)/(2*x_mag)) + 0.5;
+			scale_knee = scale_thigh;
 			if (!first_pass) {
-				mDesiredDofs[index_thigh_left_z] = angle_thigh_left_z + (forward_z - angle_thigh_left_z)*scaler;
-				mDesiredDofs[index_thigh_right_z] = angle_thigh_right_z + (forward_z - angle_thigh_right_z)*scaler;
+				mDesiredDofs[index_thigh_left_z] = angle_thigh_left_z + (forward_thigh_z - angle_thigh_left_z)*scale_thigh;
+				mDesiredDofs[index_thigh_right_z] = angle_thigh_right_z + (forward_thigh_z - angle_thigh_right_z)*scale_thigh;
+				mDesiredDofs[index_knee_left] = angle_knee_left + (forward_knee - angle_knee_left)*scale_knee;
+				mDesiredDofs[index_knee_right] = angle_knee_right + (forward_knee - angle_knee_right)*scale_knee;
 			}
 		}
 	}
@@ -390,11 +416,17 @@ void Controller::swing() {
 			state = 2;
 			if (state != last_state) {
 				last_state = state;
+				std::cout << comV.norm() << "\n";
 				//std::cout << "idle backward\n";
 			}
 			mDesiredDofs = mDefaultPose;
-			mDesiredDofs[mSkel->getDof("j_thigh_left_z")->getIndexInSkeleton()] = backward_z;
-			mDesiredDofs[mSkel->getDof("j_thigh_right_z")->getIndexInSkeleton()] = backward_z;
+			//scale_knee = ((comP.x() - x_bar) / (-2.0 * x_mag)) + 0.5;
+			mDesiredDofs[index_thigh_left_z] = backward_thigh_z;
+			mDesiredDofs[index_thigh_right_z] = backward_thigh_z;
+			//mDesiredDofs[index_knee_left] = angle_knee_left + (backward_knee - angle_knee_left)*scale_knee;
+			//mDesiredDofs[index_knee_right] = angle_knee_right + (backward_knee - angle_knee_right)*scale_knee;
+			mDesiredDofs[index_knee_left] = backward_knee;
+			mDesiredDofs[index_knee_right] = backward_knee;
 			if (first_pass) first_pass = false;
 		}
 	}
@@ -404,12 +436,20 @@ void Controller::swing() {
 			if (state != last_state) {
 				last_state = state;
 				x_mag = abs(comP.x() - x_bar);
+				angle_thigh_left_z = mSkel->getPositions()(index_thigh_left_z);
+				angle_thigh_right_z = mSkel->getPositions()(index_thigh_right_z);
+				angle_knee_left = mSkel->getPositions()(index_knee_left);
+				angle_knee_right = mSkel->getPositions()(index_knee_right);
 				//std::cout << "backward\n";
 			}
 			mDesiredDofs = mDefaultPose;
-			scaler = 1.0 - (abs(comP.x() - x_bar) / x_mag);	
-			mDesiredDofs[index_thigh_left_z] = angle_thigh_left_z + (backward_z - angle_thigh_left_z)*scaler;
-			mDesiredDofs[index_thigh_right_z] = angle_thigh_right_z + (backward_z - angle_thigh_right_z)*scaler;
+			scale_thigh = 1.0 - (abs(comP.x() - x_bar) / x_mag);
+			//scale_knee = ((comP.x() - x_bar) / (-2.0 * x_mag)) + 0.5;
+			scale_knee = scale_thigh;
+			mDesiredDofs[index_thigh_left_z] = angle_thigh_left_z + (backward_thigh_z - angle_thigh_left_z)*scale_thigh;
+			mDesiredDofs[index_thigh_right_z] = angle_thigh_right_z + (backward_thigh_z - angle_thigh_right_z)*scale_thigh;
+			mDesiredDofs[index_knee_left] = angle_knee_left + (backward_knee - angle_knee_left)*scale_knee;
+			mDesiredDofs[index_knee_right] = angle_knee_right + (backward_knee - angle_knee_right)*scale_knee;
 		}
 	}
 	else {
@@ -423,15 +463,15 @@ void Controller::swing() {
 	mDesiredDofs[mSkel->getDof("j_forearm_left")->getIndexInSkeleton()] = 0.4;
 	mDesiredDofs[mSkel->getDof("j_forearm_right")->getIndexInSkeleton()] = 0.4;
 
-	mDesiredDofs[mSkel->getDof("j_shin_left")->getIndexInSkeleton()] = 0;
-	mDesiredDofs[mSkel->getDof("j_shin_right")->getIndexInSkeleton()] = 0;
+	//mDesiredDofs[mSkel->getDof("j_shin_left")->getIndexInSkeleton()] = 0;
+	//mDesiredDofs[mSkel->getDof("j_shin_right")->getIndexInSkeleton()] = 0;
   
   stablePD();
 
 	if (dump_swing) {
 		dump_swing = false;
 		Eigen::VectorXd dq = mSkel->getPositions();
-		std::cout << "n\n";
+		std::cout << "\n\n";
 		for (int i = 0; i < dq.size(); i++) {
 			std::cout << dq(i) << "\n";
 		}

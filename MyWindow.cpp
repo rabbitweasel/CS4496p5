@@ -198,11 +198,26 @@ void MyWindow::updateSensor() {
     
   glMatrixMode(GL_PROJECTION);
   glLoadIdentity();
+	gluLookAt(mEye[0], mEye[1], mEye[2], 0.0, 0.0, -1.0, mUp[0], mUp[1], mUp[2]);
+	// added
+	GLfloat view[16];
+	glGetFloatv(GL_PROJECTION_MATRIX, view);
+
+	// reset
+	glLoadIdentity();
   gluPerspective(mPersp,
                  static_cast<double>(mWinWidth)/static_cast<double>(mWinHeight),
                  0.1, 10.0);
+	// added
+	GLfloat proj[16];
+	glGetFloatv(GL_PROJECTION_MATRIX, proj);
+
   gluLookAt(mEye[0], mEye[1], mEye[2], 0.0, 0.0, -1.0, mUp[0], mUp[1], mUp[2]);
-  
+
+	// added
+	GLfloat gl_vp[16];
+	glGetFloatv(GL_PROJECTION_MATRIX, gl_vp);
+
   glMatrixMode(GL_MODELVIEW);
   glLoadIdentity();
   initGL();
@@ -215,6 +230,37 @@ void MyWindow::updateSensor() {
   
   glScalef(0.51, 0.51, 0.51);
   glTranslatef(-1.68962, 0.00920964, -0.00350334);
+
+	// added
+	GLfloat gl_mv[16];
+	glGetFloatv(GL_MODELVIEW_MATRIX, gl_mv);
+	Eigen::Matrix4Xf e_mv(4,4);
+	Eigen::Matrix4Xf e_v(4, 4);
+	Eigen::Matrix4Xf e_proj(4, 4);
+	Eigen::Matrix4Xf e_mvp(4, 4);
+	Eigen::Matrix4Xf e_vp_test(4, 4);
+	Eigen::Matrix4Xf e_test_vp(4, 4);
+	Eigen::Vector4f vec;
+	Eigen::Vector4f result;
+	vec << 3, -0.925, 0, 1;
+	for (int i = 0; i < 4; i++) {
+		for (int j = 0; j < 4; j++) {
+			e_mv(j, i) = gl_mv[4 * i + j];
+			e_v(j, i) = view[4 * i + j];
+			e_proj(j, i) = proj[4 * i + j];
+			e_test_vp(j, i) = gl_vp[4 * i + j];
+		}
+	}
+	e_mvp = e_proj * e_v * e_mv;
+	//e_mvp = e_mv * e_proj;
+	result = e_mvp * vec;
+	result /= result.w();
+	e_vp_test = e_proj * e_v;
+	//std::cout << e_proj;
+	//std::cout << result;
+	std::cout << result;
+	std::cout << "\n";
+	std::cout << e_mvp;
   
   initLights();
   draw();
