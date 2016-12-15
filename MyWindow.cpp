@@ -172,6 +172,8 @@ void MyWindow::movePlatforms() {
     mSpeed = -PLATFORM_SPEED;
   if (platform->getDof("joint_pos_x")->getPosition() < LEFT_BOUNDARY)
     mSpeed = PLATFORM_SPEED;
+
+  //std::cout << "actual platform position X: " << platform->getCOM().x() <<"\n";
 }
 
 void MyWindow::updateSensor() {

@@ -52,6 +52,7 @@ Controller::Controller(dart::dynamics::SkeletonPtr _skel, dart::constraint::Cons
   mY = 0;
   mRows = 0; mColumns = 0;
   mPrev = -1; mCurr = -1;
+  mPrevFrame = -1; mCurrFrame = -1;
   mV = 0; mMin = -1; mMax = -1;
   mSpan = 2.0;
   /////////////////////////////
@@ -362,15 +363,12 @@ void Controller::swing() {
   boolean hasPlatformPosition = computePlatformPosition(h, xP);
   if(hasPlatformPosition)
   {
-	  if (abs(xP - xL) < 0.25*mSpan) release = true;
+	  if (abs(xP - xL) < 0.4*mSpan) release = true;
   }
 
   // Display values on console
   if (mApplyTorque || release || mManualRelease)
   {
-	  //mTorques[mSkel->getDof("j_hand_left_1")->getIndexInSkeleton()] += 2000;
-	  //mTorques[mSkel->getDof("j_hand_right_1")->getIndexInSkeleton()] += 2000;
-	  
 	  std::cout << "\n == == == == == == == == == == == == == == == == == == =\n";
 	  //std::cout << "prev: " << mPrev << ",  curr: " << mCurr << "\n";
 	  if(mV!=0) std::cout << "Platform Speed: " << mV << "\n";
@@ -403,14 +401,15 @@ void Controller::release() {
   rightHandRelease();
 
   mDesiredDofs = mDefaultPose;
-  mDesiredDofs[mSkel->getDof("j_abdomen_2")->getIndexInSkeleton()] = -1.5;
-  mDesiredDofs[mSkel->getDof("j_shin_left")->getIndexInSkeleton()] = -1.5;
-  mDesiredDofs[mSkel->getDof("j_shin_right")->getIndexInSkeleton()] = -1.5;
+  //mDesiredDofs[mSkel->getDof("j_abdomen_2")->getIndexInSkeleton()] = -1.5;
+  //mDesiredDofs[mSkel->getDof("j_shin_left")->getIndexInSkeleton()] = -1.5;
+  //mDesiredDofs[mSkel->getDof("j_shin_right")->getIndexInSkeleton()] = -1.5;
+  //if (mSkel->getCOM().y() > mY && abs(mSkel->getCOMLinearVelocity().y())<0.01)stablePD();
   stablePD();
 
   if (mVerifyLandingX && mSkel->getCOM().y() <= mY)
   { 
-	  std::cout << "<actual landing X: " << mSkel->getCOM().x() <<"\n";
+	  std::cout << "actual landing X: " << mSkel->getCOM().x() <<"\n";
 	  mVerifyLandingX = false;
   }
 }
@@ -581,15 +580,21 @@ void Controller::computePlatformVelocity()
 		if (mPrev == -1)
 		{
 			mPrev = computePlatformTopEdgeInImage();
+			mPrevFrame = mCurrentFrame;
 		}
 		else if (mCurr == -1)
 		{
 			int newPosition = computePlatformTopEdgeInImage();
-			if (newPosition != mPrev) mCurr = newPosition;
+			if (newPosition != mPrev)
+			{
+				mCurr = newPosition;
+				mCurrFrame = mCurrentFrame;
+				//std::cout << "df: " << mCurrFrame - mPrevFrame <<"\n";
+			}
 		}
 		else if (mCurr != -1 && mPrev != -1)
 		{
-			mV = double((mCurr - mPrev) / 17.0);
+			mV = double(mCurr - mPrev) / double(17);
 		}
 	}
 }
@@ -618,19 +623,27 @@ void Controller::adjustPlatformVelocitySign()
 
 void Controller::computePlatformLimits()
 {
-	if (mMin == -1 && mMax == -1 && mV != 0)
+	int next = computePlatformTopEdgeInImage();
+	if (mMin == -1 && mV!=0)
+	{		
+		if (mPrev>mCurr && next>mCurr)
+		{
+			mMin = mCurr - 140; // hard coded for span 140 in image space
+		}
+	}
+
+	if (mMax == -1 && mV!=0)
 	{
-		int next = computePlatformTopEdgeInImage();
 		if (mPrev<mCurr && next<mCurr)
 		{
 			mMax = mCurr;
-			mMin = mCurr - 140; // hardcoded for now
 		}
-		else if (next != mCurr)
-		{
-			mPrev = mCurr;
-			mCurr = next;
-		}
+	}
+
+	if ((mMin == -1 || mMax == -1) && next != mCurr)
+	{
+		mPrev = mCurr;
+		mCurr = next;
 	}
 }
 

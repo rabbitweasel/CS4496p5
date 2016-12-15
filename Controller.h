@@ -75,6 +75,7 @@ public:
 
   double mV; // signed platform speed
   int mPrev, mCurr; // integers to track movement of platform;s top edge in image
+  int mPrevFrame, mCurrFrame;
 
   int mMin, mMax; // image row numbers for limits of platform's range of motion
   double mSpan;
