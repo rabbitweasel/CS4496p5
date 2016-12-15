@@ -41,6 +41,8 @@
 #define LEFT_BOUNDARY -0.6
 #define PLATFORM_SPEED 0.75
 
+
+
 MyWindow::MyWindow(): SimWindow() {
   mController = NULL;
  
@@ -78,8 +80,6 @@ void MyWindow::drawSkels() {
   for (unsigned int i = 0; i < mWorld->getNumSkeletons(); i++)
     mWorld->getSkeleton(i)->draw(mRI);
   
-	//@changed
-	glDisable(GL_LIGHTING);
   // display the frame count in 2D text
   char buff[64];
 #ifdef _WIN32
@@ -90,8 +90,7 @@ void MyWindow::drawSkels() {
   std::string effort(buff);
   glColor3f(0.0, 0.0, 0.0);
   dart::gui::drawStringOnScreen(0.02f, 0.05f, effort);
-	//@changed
-  //glEnable(GL_LIGHTING);
+  glEnable(GL_LIGHTING);
   
 #ifdef _WIN32
   _snprintf(buff, sizeof(buff), "/ %d",
@@ -103,26 +102,8 @@ void MyWindow::drawSkels() {
   std::string elapsedTime(buff);
   glColor3f(0.0, 0.0, 0.0);
   dart::gui::drawStringOnScreen(0.15f, 0.02f, elapsedTime);
-
-	// note: below was added as GL_LIGHTING is not disabled in SimWindow.h which affects some Windows PCs
-	if (!mSimulating)
-#ifdef _WIN32
-	_snprintf(buff, sizeof(buff), "%d", mPlayFrame);
-#else
-	std::snprintf(buff, sizeof(buff), "%d", mPlayFrame);
-#endif
-	else
-#ifdef _WIN32
-		_snprintf(buff, sizeof(buff), "%d", mWorld->getSimFrames());
-#else
-		std::snprintf(buff, sizeof(buff), "%d", mWorld->getSimFrames());
-#endif
-	std::string frame(buff);
-	glColor3f(0.0, 0.0, 0.0);
-	dart::gui::drawStringOnScreen(0.02f, 0.02f, frame);
-
-	//@changed
   glEnable(GL_LIGHTING);
+  
 }
 
 void MyWindow::keyboard(unsigned char _key, int _x, int _y) {
@@ -166,10 +147,13 @@ void MyWindow::keyboard(unsigned char _key, int _x, int _y) {
     case 'm':  // release
       mController->setState("RELEASE");
       break;
-		case '=': // testing only, do not use in presentation
-			break;
-		case '-': // testing only, do not use in presentation
-			break;
+	case 't':  // test
+		mController->mApplyTorque = true;
+		break;
+	case 'r':
+		mController->mManualRelease = true;
+		break;
+
     default:
       Win3D::keyboard(_key, _x, _y);
   }
@@ -193,6 +177,8 @@ void MyWindow::movePlatforms() {
 void MyWindow::updateSensor() {
 	if (mInputSensor.size() == 0) {
 		mInputSensor.resize(4 * mWinWidth * mWinHeight);
+		mController->mRows = mWinHeight;
+		mController->mColumns = mWinWidth;
 		mController->mVision = &mInputSensor;
 	}
     
