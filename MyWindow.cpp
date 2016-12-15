@@ -37,9 +37,11 @@
 
 #include "MyWindow.h"
 
-#define RIGHT_BOUNDARY 0.6
-#define LEFT_BOUNDARY -0.6
-#define PLATFORM_SPEED 0.75
+#define RIGHT_BOUNDARY 0.6 // 0.6
+#define LEFT_BOUNDARY -0.6 // -0.6
+#define PLATFORM_SPEED 0.75 //0.75
+
+
 
 MyWindow::MyWindow(): SimWindow() {
   mController = NULL;
@@ -56,7 +58,43 @@ MyWindow::MyWindow(): SimWindow() {
 MyWindow::~MyWindow() {
 }
 
+bool start_clock_estimate = true;
+bool end_clock2 = true;
+bool end_clock_obtained = false;
+clock_t timer_frames;
+int counter_frames = 0;
+
 void MyWindow::timeStepping() {
+	/*
+	counter_frames++;
+	if (start_clock_estimate)
+	{
+		start_clock_estimate = false;
+		std::cout << " startFrame " << counter_frames << "\n";
+		timer_frames = clock();
+	}
+	if (((float)clock() / CLOCKS_PER_SEC) - ((float)timer_frames) / CLOCKS_PER_SEC > 1.0)
+	{
+		if (end_clock2)
+		{
+			end_clock2 = false;
+			std::cout << " endFrame " << counter_frames << " time " << ((float)clock() / CLOCKS_PER_SEC) << "\n";
+		}
+	}
+	*/
+
+	if (start_clock_estimate)
+	{
+		counter_frames = 0;
+		start_clock_estimate = false;
+		timer_frames = clock();
+	}
+	if (((float)clock() / CLOCKS_PER_SEC) - ((float)timer_frames) / CLOCKS_PER_SEC > 0.25) {
+		start_clock_estimate = true;
+		//std::cout << "counter_frames " << counter_frames << " simframes " << mWorld->getSimFrames() << "\n";
+		mController->mTimerFrames = counter_frames;
+	}
+
   // Compute control force
   mController->computeTorques(mWorld->getSimFrames());
   // Apply control force to skeleton
@@ -68,48 +106,51 @@ void MyWindow::timeStepping() {
   // Integrate forward for one time step
   mWorld->step();
   // Update the sensor at 60Hz; pixel values (RGBA) are stored in mInputSensor
-  if (mWorld->getSimFrames() % 17 == 0)
-    updateSensor();
+	if (mWorld->getSimFrames() % 2 == 0)
+	{
+		updateSensor();
+	}
+	counter_frames++;
 }
 
 void MyWindow::drawSkels() {
-  glEnable(GL_LIGHTING);
-  glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-  for (unsigned int i = 0; i < mWorld->getNumSkeletons(); i++)
-    mWorld->getSkeleton(i)->draw(mRI);
-  
+	glEnable(GL_LIGHTING);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	for (unsigned int i = 0; i < mWorld->getNumSkeletons(); i++)
+		mWorld->getSkeleton(i)->draw(mRI);
+
 	//@changed
 	glDisable(GL_LIGHTING);
-  // display the frame count in 2D text
-  char buff[64];
+	// display the frame count in 2D text
+	char buff[64];
 #ifdef _WIN32
-    _snprintf(buff, sizeof(buff), "%.4f", mTotalEffort);
+	_snprintf(buff, sizeof(buff), "%.4f", mTotalEffort);
 #else
-  std::snprintf(buff, sizeof(buff), "%.4f", mTotalEffort);
+	std::snprintf(buff, sizeof(buff), "%.4f", mTotalEffort);
 #endif
-  std::string effort(buff);
-  glColor3f(0.0, 0.0, 0.0);
-  dart::gui::drawStringOnScreen(0.02f, 0.05f, effort);
+	std::string effort(buff);
+	glColor3f(0.0, 0.0, 0.0);
+	dart::gui::drawStringOnScreen(0.02f, 0.05f, effort);
 	//@changed
-  //glEnable(GL_LIGHTING);
-  
+	//glEnable(GL_LIGHTING);
+
 #ifdef _WIN32
-  _snprintf(buff, sizeof(buff), "/ %d",
-            mWorld->getRecording()->getNumFrames());
+	_snprintf(buff, sizeof(buff), "/ %d",
+		mWorld->getRecording()->getNumFrames());
 #else
-  std::snprintf(buff, sizeof(buff), "/ %d",
-                mWorld->getRecording()->getNumFrames());
+	std::snprintf(buff, sizeof(buff), "/ %d",
+		mWorld->getRecording()->getNumFrames());
 #endif
-  std::string elapsedTime(buff);
-  glColor3f(0.0, 0.0, 0.0);
-  dart::gui::drawStringOnScreen(0.15f, 0.02f, elapsedTime);
+	std::string elapsedTime(buff);
+	glColor3f(0.0, 0.0, 0.0);
+	dart::gui::drawStringOnScreen(0.15f, 0.02f, elapsedTime);
 
 	// note: below was added as GL_LIGHTING is not disabled in SimWindow.h which affects some Windows PCs
 	if (!mSimulating)
 #ifdef _WIN32
-	_snprintf(buff, sizeof(buff), "%d", mPlayFrame);
+		_snprintf(buff, sizeof(buff), "%d", mPlayFrame);
 #else
-	std::snprintf(buff, sizeof(buff), "%d", mPlayFrame);
+		std::snprintf(buff, sizeof(buff), "%d", mPlayFrame);
 #endif
 	else
 #ifdef _WIN32
@@ -122,7 +163,7 @@ void MyWindow::drawSkels() {
 	dart::gui::drawStringOnScreen(0.02f, 0.02f, frame);
 
 	//@changed
-  glEnable(GL_LIGHTING);
+	glEnable(GL_LIGHTING);
 }
 
 void MyWindow::keyboard(unsigned char _key, int _x, int _y) {
@@ -166,10 +207,13 @@ void MyWindow::keyboard(unsigned char _key, int _x, int _y) {
     case 'm':  // release
       mController->setState("RELEASE");
       break;
-		case '=': // testing only, do not use in presentation
-			break;
-		case '-': // testing only, do not use in presentation
-			break;
+	case 't':  // test
+		mController->mApplyTorque = true;
+		break;
+	case 'r':
+		mController->mManualRelease = true;
+		break;
+
     default:
       Win3D::keyboard(_key, _x, _y);
   }
@@ -182,17 +226,40 @@ void MyWindow::setController(Controller* _controller) {
 
 void MyWindow::movePlatforms() {
   dart::dynamics::SkeletonPtr platform = mWorld->getSkeleton("landing1");
-  int index = platform->getDof("joint_pos_x")->getIndexInSkeleton();
-  platform->setCommand(index, mSpeed);
+  int index_platform = platform->getDof("joint_pos_x")->getIndexInSkeleton();
+  platform->setCommand(index_platform, mSpeed);
   if (platform->getDof("joint_pos_x")->getPosition() > RIGHT_BOUNDARY)
     mSpeed = -PLATFORM_SPEED;
   if (platform->getDof("joint_pos_x")->getPosition() < LEFT_BOUNDARY)
     mSpeed = PLATFORM_SPEED;
+
+	int index = 0;
+	dart::dynamics::SkeletonPtr aim_box = mWorld->getSkeleton("box1");
+	if (aim_box != nullptr) {
+		index = aim_box->getDof("joint_pos_x")->getIndexInSkeleton();
+		aim_box->setPosition(index, mController->mXAim - 3.0);
+	}
+
+	dart::dynamics::SkeletonPtr aim_platform = mWorld->getSkeleton("box2");
+	if (aim_box != nullptr) {
+		index = aim_platform->getDof("joint_pos_x")->getIndexInSkeleton();
+		aim_platform->setPosition(index, mController->mXPlatformEstimate - 3.0);
+	}
+
+	dart::dynamics::SkeletonPtr platform_actual = mWorld->getSkeleton("box3");
+	if (aim_box != nullptr) {
+		index = platform_actual->getDof("joint_pos_x")->getIndexInSkeleton();
+		platform_actual->setPosition(index, platform->getPosition(index_platform));
+	}
+
+  //std::cout << "actual platform position X: " << platform->getCOM().x() <<"\n";
 }
 
 void MyWindow::updateSensor() {
 	if (mInputSensor.size() == 0) {
 		mInputSensor.resize(4 * mWinWidth * mWinHeight);
+		mController->mRows = mWinHeight;
+		mController->mColumns = mWinWidth;
 		mController->mVision = &mInputSensor;
 	}
     

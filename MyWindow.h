@@ -36,7 +36,7 @@
  */
 
 #ifndef APPS_SWING_MYWINDOW_H_
-#define APPS_SWING_MYWINDOW_H_ 
+#define APPS_SWING_MYWINDOW_H_
 
 
 #include <cstdarg>

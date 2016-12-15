@@ -41,6 +41,8 @@
 #include "dart/dart.h"
 #include "MyWindow.h"
 
+extern boolean addTorque(false);
+
 int main(int argc, char* argv[]) {
   // Create and initialize the world
 
@@ -69,11 +71,12 @@ int main(int argc, char* argv[]) {
   // its movement is not affected by external forces
   dart::dynamics::SkeletonPtr platform = myWorld->getSkeleton("landing1");
   platform->getJoint("joint")->setActuatorType(dart::dynamics::Joint::VELOCITY);
-
+  
   // Create controller
   Controller* myController = new Controller(biped,
                                             myWorld->getConstraintSolver(),
                                             myWorld->getTimeStep());
+
 
   // Create a window and link it to the world
   MyWindow window;

@@ -60,8 +60,41 @@ public:
   Eigen::VectorXd getDesiredDofs();
   Eigen::MatrixXd getKp();
   Eigen::MatrixXd getKd();
-	// added 12/06/2016
-	std::vector<unsigned char>* mVision;
+
+  std::vector<unsigned char>* mVision;
+
+  /////////////////////////////////////////////////////////////////////////////
+  // Travis' function
+  void gainMomentum();
+
+  //////////////////////////////////////////////////////////////////////////////
+  // my variables
+  boolean mApplyTorque, mVerifyLandingX, mManualRelease;
+  double mY; // standing cg height
+  int mRows, mColumns; // image size
+
+  double mV; // signed platform speed
+  int mPrev, mCurr; // integers to track movement of platform;s top edge in image
+  int mPrevFrame, mCurrFrame;
+	int mTimerFrames = 0;
+	double mXAim = 0;
+	double mXPlatformEstimate = 0;
+	int mAverageFramesBeforeRenderTargetUpdate = 1;
+	int samples_taken = 0;
+	double mVTotal = 0;
+
+  int mMin, mMax; // image row numbers for limits of platform's range of motion
+  double mSpan;
+
+  int computePlatformTopEdgeInImage(); // computes image row for platform's top edge
+  void computePlatformVelocity(); // computes platform's velocity along x
+  void adjustPlatformVelocitySign(); // adjusts the sign of platform velocity
+  void computePlatformLimits(); // computes limits of platform's range of motion 
+
+
+  void computeTimeOfFlightAndLandingX(double &h, double &xL); // computes time of flight and landing x if release from swing NOW
+  boolean computePlatformPosition(double h, double &xP); // computes platforms position when the character will land
+  /////////////////////////////////////////////////////////////////////////////////////
 
 protected:
   void stand();
